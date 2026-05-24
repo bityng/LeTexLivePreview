@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LaTeX 公式导出器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --accent: #c8853a;
+    --accent2: #4a7fa5;
+    --muted: #8a8070;
+    --border: #d4c9b0;
+    --panel: #ede8df;
+    --shadow: rgba(26,26,46,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Serif SC', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 28px 40px 20px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  header h1 span { color: var(--accent); font-style: italic; }
+  header p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Main layout ── */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  /* ── Left panel: controls ── */
+  .controls {
+    padding: 32px 36px;
+    border-right: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 130px;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    color: var(--ink);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  /* Quick presets */
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .preset-btn {
+    background: var(--panel);
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    padding: 4px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Style controls */
+  .style-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+  input[type="color"] {
+    width: 100%;
+    height: 36px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 4px;
+    cursor: pointer;
+    background: #fff;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    background: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--ink);
+    outline: none;
+    cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .value-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    text-align: right;
+  }
+
+  /* Background toggle */
+  .bg-toggle {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .bg-opt {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 6px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .bg-opt.active { border-color: var(--accent); color: var(--accent); background: rgba(200,133,58,0.08); }
+  .bg-opt:hover:not(.active) { border-color: var(--muted); }
+
+  /* Custom bg color (shown when bg=custom) */
+  #customBgRow { display: none; }
+
+  /* Export buttons */
+  .export-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    flex: 1;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.18s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #b5722e; }
+  .btn-secondary {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1.5px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+
+  /* ── Right panel: preview ── */
+  .preview-panel {
+    padding: 32px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .preview-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    min-height: 260px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* checkerboard for transparency */
+  .preview-wrap.transparent-bg {
+    background-image:
+      linear-gradient(45deg, #ccc 25%, transparent 25%),
+      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ccc 75%),
+      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    background-color: #fff;
+  }
+
+  #previewInner {
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    overflow: auto;
+  }
+
+  #formula-render {
+    max-width: 100%;
+  }
+
+  .error-msg {
+    color: #c0392b;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    padding: 8px;
+    background: rgba(192,57,43,0.08);
+    border-radius: 4px;
+    display: none;
+  }
+
+  /* info strip */
+  .info-strip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    line-height: 1.7;
+  }
+  .info-strip strong { color: var(--accent); }
+
+  /* Padding control */
+  .full-field { grid-column: 1/-1; }
+
+  /* ── Responsive ── */
+  @media (max-width: 780px) {
+    main { grid-template-columns: 1fr; }
+    .controls { border-right: none; border-bottom: 2px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LaTeX <span>公式</span> 导出器</h1>
+  <p>→ 透明背景 · 自定义字体色 · PNG / SVG 导出</p>
+</header>
+
+<main>
+  <!-- LEFT: Controls -->
+  <div class="controls">
+
+    <div>
+      <div class="section-label">LaTeX 公式</div>
+      <textarea id="latexInput" placeholder="输入 LaTeX，例如：E = mc^2">\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}</textarea>
+    </div>
+
+    <div>
+      <div class="section-label">快速示例</div>
+      <div class="presets">
+        <span class="preset-btn" data-latex="E = mc^2">E=mc²</span>
+        <span class="preset-btn" data-latex="\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}">高斯积分</span>
+        <span class="preset-btn" data-latex="i\hbar\frac{\partial}{\partial t}\Psi = \hat{H}\Psi">薛定谔</span>
+        <span class="preset-btn" data-latex="\sum_{n=1}^{\infty}\frac{1}{n^2}=\frac{\pi^2}{6}">巴塞尔</span>
+        <span class="preset-btn" data-latex="\nabla \cdot \mathbf{E} = \frac{\rho}{\varepsilon_0}">麦克斯韦</span>
+        <span class="preset-btn" data-latex="\frac{d}{dx}\left(\int_a^x f(t)\,dt\right)=f(x)">微积分基本定理</span>
+        <span class="preset-btn" data-latex="x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}">求根公式</span>
+        <span class="preset-btn" data-latex="e^{i\pi}+1=0">欧拉恒等式</span>
+      </div>
+    </div>
+
+    <div class="style-grid">
+      <div class="field">
+        <label>公式颜色</label>
+        <input type="color" id="formulaColor" value="#1a1a2e">
+      </div>
+      <div class="field">
+        <label>背景模式</label>
+        <!-- handled below -->
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">背景模式</div>
+      <div class="bg-toggle">
+        <div class="bg-opt active" data-bg="transparent">透明</div>
+        <div class="bg-opt" data-bg="white">白色</div>
+        <div class="bg-opt" data-bg="black">黑色</div>
+        <div class="bg-opt" data-bg="custom">自定义</div>
+      </div>
+    </div>
+
+    <div id="customBgRow" class="field">
+      <label>自定义背景色</label>
+      <input type="color" id="bgColor" value="#f5f0e8">
+    </div>
+
+    <div class="style-grid">
+      <div class="field">
+        <label>字体大小</label>
+        <input type="range" id="fontSize" min="12" max="96" value="36" step="2">
+        <div class="value-display" id="fontSizeVal">36px</div>
+      </div>
+      <div class="field">
+        <label>内边距</label>
+        <input type="range" id="padding" min="0" max="80" value="24" step="4">
+        <div class="value-display" id="paddingVal">24px</div>
+      </div>
+      <div class="field full-field">
+        <label>导出格式</label>
+        <select id="exportFormat">
+          <option value="png">PNG（透明/实色背景）</option>
+          <option value="svg">SVG（矢量，透明背景）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="export-row">
+      <button class="btn btn-primary" id="exportBtn">⬇ 导出图片</button>
+      <button class="btn btn-secondary" id="copyBtn">⎘ 复制 SVG</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div class="preview-panel">
+    <div class="section-label">实时预览</div>
+    <div class="preview-wrap transparent-bg" id="previewWrap">
+      <div id="previewInner">
+        <div id="formula-render"></div>
+      </div>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="info-strip">
+      <strong>提示：</strong>选择「透明」背景后导出 PNG，公式周围无底色，可直接叠加在任意图片或幻灯片上。<br>
+      SVG 为矢量格式，缩放不失真。
+    </div>
+  </div>
+</main>
+
+<!-- Hidden canvas for PNG export -->
+<canvas id="exportCanvas" style="display:none;"></canvas>
+
+<script>
+// ── State ──
+let currentBg = 'transparent';
+
+// ── Elements ──
+const latexInput   = document.getElementById('latexInput');
+const formulaColor = document.getElementById('formulaColor');
+const bgColor      = document.getElementById('bgColor');
+const fontSizeEl   = document.getElementById('fontSize');
+const paddingEl    = document.getElementById('padding');
+const fontSizeVal  = document.getElementById('fontSizeVal');
+const paddingVal   = document.getElementById('paddingVal');
+const previewWrap  = document.getElementById('previewWrap');
+const previewInner = document.getElementById('previewInner');
+const formulaRender = document.getElementById('formula-render');
+const errorMsg     = document.getElementById('errorMsg');
+const exportFormat = document.getElementById('exportFormat');
+const customBgRow  = document.getElementById('customBgRow');
+
+// ── Render ──
+let renderTimeout;
+function scheduleRender() {
+  clearTimeout(renderTimeout);
+  renderTimeout = setTimeout(renderFormula, 200);
+}
+
+async function renderFormula() {
+  errorMsg.style.display = 'none';
+  const latex = latexInput.value.trim() || 'E=mc^2';
+  const size  = fontSizeEl.value;
+  const pad   = paddingEl.value;
+  const color = formulaColor.value;
+
+  // Update preview padding
+  previewInner.style.padding = pad + 'px';
+
+  // Render via MathJax
+  try {
+    // Clear previous
+    formulaRender.innerHTML = '';
+
+    // Use MathJax to generate SVG
+    const svg = await MathJax.tex2svgPromise(latex, { display: true });
+    const svgEl = svg.querySelector('svg');
+    if (!svgEl) throw new Error('渲染失败');
+
+    // Scale
+    svgEl.style.fontSize = size + 'px';
+    svgEl.style.color = color;
+    svgEl.setAttribute('color', color);
+
+    // Force color on all children
+    svgEl.querySelectorAll('[fill]').forEach(el => {
+      if (el.getAttribute('fill') !== 'none') el.setAttribute('fill', color);
+    });
+    svgEl.querySelectorAll('[stroke]').forEach(el => {
+      if (el.getAttribute('stroke') !== 'none') el.setAttribute('stroke', color);
+    });
+
+    formulaRender.appendChild(svgEl.cloneNode(true));
+  } catch(e) {
+    errorMsg.textContent = '公式解析错误：' + e.message;
+    errorMsg.style.display = 'block';
+  }
+}
+
+// ── Background ──
+function applyBg() {
+  // Preview wrap background
+  previewWrap.className = 'preview-wrap';
+  if (currentBg === 'transparent') {
+    previewWrap.classList.add('transparent-bg');
+    previewInner.style.background = 'transparent';
+  } else if (currentBg === 'white') {
+    previewInner.style.background = '#ffffff';
+    previewWrap.style.background = '#fff';
+  } else if (currentBg === 'black') {
+    previewInner.style.background = '#000000';
+    previewWrap.style.background = '#000';
+  } else {
+    previewInner.style.background = bgColor.value;
+    previewWrap.style.background = bgColor.value;
+  }
+}
+
+document.querySelectorAll('.bg-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.bg-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentBg = btn.dataset.bg;
+    customBgRow.style.display = currentBg === 'custom' ? 'flex' : 'none';
+    applyBg();
+  });
+});
+
+bgColor.addEventListener('input', applyBg);
+
+// ── Sliders ──
+fontSizeEl.addEventListener('input', () => {
+  fontSizeVal.textContent = fontSizeEl.value + 'px';
+  scheduleRender();
+});
+paddingEl.addEventListener('input', () => {
+  paddingVal.textContent = paddingEl.value + 'px';
+  scheduleRender();
+});
+
+// ── Color ──
+formulaColor.addEventListener('input', scheduleRender);
+
+// ── Presets ──
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    latexInput.value = btn.dataset.latex;
+    scheduleRender();
+  });
+});
+
+latexInput.addEventListener('input', scheduleRender);
+
+// ── Get current SVG with color applied ──
+function getStyledSVG() {
+  const svgEl = formulaRender.querySelector('svg');
+  if (!svgEl) return null;
+  const clone = svgEl.cloneNode(true);
+  const color = formulaColor.value;
+  clone.querySelectorAll('[fill]').forEach(el => {
+    if (el.getAttribute('fill') !== 'none') el.setAttribute('fill', color);
+  });
+  clone.querySelectorAll('[stroke]').forEach(el => {
+    if (el.getAttribute('stroke') !== 'none') el.setAttribute('stroke', color);
+  });
+  return clone;
+}
+
+// ── Export PNG ──
+async function exportPNG() {
+  const svgEl = getStyledSVG();
+  if (!svgEl) return alert('请先输入有效的公式');
+
+  const pad = parseInt(paddingEl.value);
+
+  // Get natural size
+  const vb = svgEl.getAttribute('viewBox');
+  let w, h;
+  if (vb) {
+    const parts = vb.split(/\s+/);
+    w = parseFloat(parts[2]);
+    h = parseFloat(parts[3]);
+  } else {
+    w = parseFloat(svgEl.getAttribute('width') || 200);
+    h = parseFloat(svgEl.getAttribute('height') || 80);
+  }
+
+  const scale = parseInt(fontSizeEl.value) / 16; // relative to 16px base
+  const canvasW = Math.ceil(w * scale + pad * 2);
+  const canvasH = Math.ceil(h * scale + pad * 2);
+
+  const canvas = document.getElementById('exportCanvas');
+  canvas.width  = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  // Background
+  if (currentBg !== 'transparent') {
+    ctx.fillStyle = currentBg === 'white' ? '#ffffff'
+                  : currentBg === 'black' ? '#000000'
+                  : bgColor.value;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+  }
+
+  // Serialize SVG
+  svgEl.setAttribute('width',  w * scale);
+  svgEl.setAttribute('height', h * scale);
+  const xml = new XMLSerializer().serializeToString(svgEl);
+  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, pad, pad, w * scale, h * scale);
+    URL.revokeObjectURL(url);
+    const link = document.createElement('a');
+    link.download = 'formula.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+  img.src = url;
+}
+
+// ── Export SVG ──
+function exportSVG() {
+  const svgEl = getStyledSVG();
+  if (!svgEl) return alert('请先输入有效的公式');
+
+  const pad = parseInt(paddingEl.value);
+  const scale = parseInt(fontSizeEl.value) / 16;
+  const vb = svgEl.getAttribute('viewBox');
+  let w = 200, h = 80;
+  if (vb) {
+    const parts = vb.split(/\s+/);
+    w = parseFloat(parts[2]);
+    h = parseFloat(parts[3]);
+  }
+  const sw = w * scale, sh = h * scale;
+  const totalW = sw + pad * 2, totalH = sh + pad * 2;
+
+  const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  wrapper.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  wrapper.setAttribute('width', totalW);
+  wrapper.setAttribute('height', totalH);
+  wrapper.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+
+  if (currentBg !== 'transparent') {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('width', totalW);
+    rect.setAttribute('height', totalH);
+    rect.setAttribute('fill', currentBg === 'white' ? '#ffffff'
+                            : currentBg === 'black' ? '#000000'
+                            : bgColor.value);
+    wrapper.appendChild(rect);
+  }
+
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('transform', `translate(${pad}, ${pad}) scale(${scale})`);
+  svgEl.setAttribute('width', w);
+  svgEl.setAttribute('height', h);
+  g.appendChild(svgEl);
+  wrapper.appendChild(g);
+
+  const xml  = new XMLSerializer().serializeToString(wrapper);
+  const blob = new Blob([xml], { type: 'image/svg+xml' });
+  const link = document.createElement('a');
+  link.download = 'formula.svg';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+}
+
+// ── Copy SVG ──
+async function copySVG() {
+  const svgEl = getStyledSVG();
+  if (!svgEl) return;
+  const xml = new XMLSerializer().serializeToString(svgEl);
+  await navigator.clipboard.writeText(xml);
+  const btn = document.getElementById('copyBtn');
+  const orig = btn.textContent;
+  btn.textContent = '✓ 已复制！';
+  setTimeout(() => btn.textContent = orig, 1800);
+}
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (exportFormat.value === 'svg') exportSVG();
+  else exportPNG();
+});
+document.getElementById('copyBtn').addEventListener('click', copySVG);
+
+// ── Init ──
+window.addEventListener('load', () => {
+  applyBg();
+  // Wait for MathJax to load
+  MathJax.startup.promise.then(() => {
+    renderFormula();
+  });
+});
+</script>
+</body>
+</html>
