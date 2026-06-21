@@ -15,6 +15,13 @@ const UIBindings = {
     this.bindPreprocessorUI();
     this.bindCollapsibles();
     this.bindLatexInput();
+    this.bindRefTable();
+    this.bindZoom();
+    this.bindQuickEdit();
+
+    // Init syntax highlighting
+    SyntaxHighlight.init();
+    PreviewZoom.init();
   },
 
   // ── Background toggles ──
@@ -89,6 +96,10 @@ const UIBindings = {
         if (btn.dataset.latex) {
           latexInput.value = btn.dataset.latex;
         }
+        if (btn.dataset.code) {
+          latexInput.value = btn.dataset.code;
+        }
+        SyntaxHighlight.update();
         Renderer.scheduleRender();
       });
     });
@@ -96,7 +107,12 @@ const UIBindings = {
 
   // ── LaTeX input textarea ──
   bindLatexInput() {
-    document.getElementById('latexInput').addEventListener('input', () => Renderer.scheduleRender());
+    const ta = document.getElementById('latexInput');
+    ta.addEventListener('input', () => {
+      SyntaxHighlight.update();
+      Renderer.scheduleRender();
+    });
+    ta.addEventListener('scroll', () => SyntaxHighlight.syncScroll());
   },
 
   // ── Export buttons ──
@@ -391,7 +407,40 @@ const UIBindings = {
     document.querySelectorAll('.collapsible-header').forEach(header => {
       header.addEventListener('click', () => {
         header.classList.toggle('collapsed');
-        const body = header.nextElementSibling;
+   ,
+
+  // ════════════════════════════════════════════════════════
+  // LaTeX Ref Table
+  // ════════════════════════════════════════════════════════
+  bindRefTable() {
+    document.getElementById('refBtn').addEventListener('click', () => LaTeXRef.open());
+    document.getElementById('refOverlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) LaTeXRef.close();
+    });
+    document.getElementById('refSearchInput').addEventListener('input', (e) => {
+      LaTeXRef.filter(e.target.value);
+    });
+    // ESC to close
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.getElementById('refOverlay').classList.contains('active')) {
+        LaTeXRef.close();
+      }
+    });
+  },
+
+  // ════════════════════════════════════════════════════════
+  // Preview Zoom (initialized separately; just ensure it works with ESC too)
+  // ════════════════════════════════════════════════════════
+  bindZoom() {
+    // Zoom is fully handled by PreviewZoom.init()
+  },
+
+  // ════════════════════════════════════════════════════════
+  // Quick Edit Toolbar
+  // ════════════════════════════════════════════════════════
+  bindQuickEdit() {
+    QuickEdit.init();
+  }     const body = header.nextElementSibling;
         if (body) body.classList.toggle('hidden');
       });
     });

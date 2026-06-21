@@ -21,18 +21,20 @@ const App = {
     this.macroManager = new MacroManager();
     this.preprocessor = new Preprocessor();
 
-    // Wire UI events
+    // Wire UI events (this also initializes SyntaxHighlight, QuickEdit, PreviewZoom)
     UIBindings.init();
 
     // Wait for MathJax
     if (window.MathJax && MathJax.startup) {
       MathJax.startup.promise.then(() => {
         Renderer.applyFontCSS(this.currentFont, this.currentFontWeight, this.currentFontStyle);
+        SyntaxHighlight.update();
         Renderer.renderFormula();
       });
     } else {
       window.addEventListener('load', () => {
         Renderer.applyFontCSS(this.currentFont, this.currentFontWeight, this.currentFontStyle);
+        SyntaxHighlight.update();
         Renderer.renderFormula();
       });
     }

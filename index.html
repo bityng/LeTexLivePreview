@@ -58,10 +58,61 @@
   <!-- ═══════════════════ LEFT PANEL: Controls ═══════════════════ -->
   <div class="controls">
 
-    <!-- ── LaTeX Input ── -->
+    <!-- ── LaTeX Input with Syntax Highlighting ── -->
     <div>
-      <div class="section-label">LaTeX 公式</div>
-      <textarea id="latexInput" placeholder="输入 LaTeX，例如：E = mc^2">\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}</textarea>
+      <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>LaTeX 公式</span>
+        <button class="btn btn-secondary btn-small" id="refBtn" style="flex:0;font-size:0.64rem;">📖 语法参考</button>
+      </div>
+      <!-- Quick Edit Toolbar (Word-like) -->
+      <div class="quick-edit-toolbar">
+        <div class="qeb-group">
+          <button class="qeb-btn" data-insert="frac" title="分数"><span class="qeb-icon">⅟</span><span class="qeb-text">分数</span></button>
+          <button class="qeb-btn" data-insert="sqrt" title="平方根"><span class="qeb-icon">√</span><span class="qeb-text">根号</span></button>
+          <button class="qeb-btn" data-insert="nsqrt" title="n次根"><span class="qeb-icon">∛</span><span class="qeb-text">n次根</span></button>
+        </div>
+        <span class="qeb-sep"></span>
+        <div class="qeb-group">
+          <button class="qeb-btn" data-insert="sup" title="上标"><span class="qeb-icon">x²</span><span class="qeb-text">上标</span></button>
+          <button class="qeb-btn" data-insert="sub" title="下标"><span class="qeb-icon">x₂</span><span class="qeb-text">下标</span></button>
+        </div>
+        <span class="qeb-sep"></span>
+        <div class="qeb-group">
+          <button class="qeb-btn" data-insert="sum" title="求和"><span class="qeb-icon">Σ</span><span class="qeb-text">求和</span></button>
+          <button class="qeb-btn" data-insert="int" title="积分"><span class="qeb-icon">∫</span><span class="qeb-text">积分</span></button>
+          <button class="qeb-btn" data-insert="lim" title="极限"><span class="qeb-icon">lim</span><span class="qeb-text">极限</span></button>
+          <button class="qeb-btn" data-insert="prod" title="连乘"><span class="qeb-icon">∏</span><span class="qeb-text">连乘</span></button>
+        </div>
+        <span class="qeb-sep"></span>
+        <div class="qeb-group">
+          <button class="qeb-btn" data-insert="leftright" title="自适应括号"><span class="qeb-icon">(·)</span><span class="qeb-text">括号</span></button>
+          <button class="qeb-btn" data-insert="frac" title="分数"><span class="qeb-icon">a/b</span><span class="qeb-text">分数</span></button>
+          <button class="qeb-btn" data-insert="pmatrix" title="矩阵"><span class="qeb-icon">▦</span><span class="qeb-text">矩阵</span></button>
+          <button class="qeb-btn" data-insert="cases" title="分段函数"><span class="qeb-icon">{</span><span class="qeb-text">分段</span></button>
+        </div>
+        <span class="qeb-sep"></span>
+        <div class="qeb-group">
+          <button class="qeb-btn" data-insert="mathbb" title="黑板粗体"><span class="qeb-icon">ℝ</span><span class="qeb-text">粗体</span></button>
+          <button class="qeb-btn" data-insert="bar" title="上划线"><span class="qeb-icon">x̄</span><span class="qeb-text">杠</span></button>
+          <button class="qeb-btn" data-insert="hat" title="帽子"><span class="qeb-icon">x̂</span><span class="qeb-text">帽</span></button>
+          <button class="qeb-btn" data-insert="vec" title="向量"><span class="qeb-icon">v⃗</span><span class="qeb-text">向量</span></button>
+        </div>
+        <span class="qeb-sep"></span>
+        <div class="qeb-group">
+          <button class="qeb-btn" data-insert="alpha" title="α"><span class="qeb-icon">α</span></button>
+          <button class="qeb-btn" data-insert="beta" title="β"><span class="qeb-icon">β</span></button>
+          <button class="qeb-btn" data-insert="gamma" title="γ"><span class="qeb-icon">γ</span></button>
+          <button class="qeb-btn" data-insert="delta" title="δ"><span class="qeb-icon">δ</span></button>
+          <button class="qeb-btn" data-insert="pi" title="π"><span class="qeb-icon">π</span></button>
+          <button class="qeb-btn" data-insert="sigma" title="σ"><span class="qeb-icon">σ</span></button>
+          <button class="qeb-btn" data-insert="omega" title="ω"><span class="qeb-icon">ω</span></button>
+        </div>
+      </div>
+      <!-- Syntax-highlighted editor -->
+      <div class="editor-container">
+        <pre class="editor-highlight" id="editorHighlight"><code></code></pre>
+        <textarea class="editor-textarea" id="latexInput" placeholder="输入 LaTeX，例如：E = mc^2" spellcheck="false">\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}</textarea>
+      </div>
     </div>
 
     <!-- ── Quick Presets (Extended: Module 2) ── -->
@@ -283,6 +334,7 @@
   <div class="preview-panel">
     <div class="section-label">实时预览</div>
     <div class="preview-wrap transparent-bg" id="previewWrap">
+      <span class="preview-zoom-hint">🔍 点击放大</span>
       <div id="previewInner">
         <div id="formula-render"></div>
       </div>
@@ -298,11 +350,36 @@
 <!-- Hidden canvas for PNG export -->
 <canvas id="exportCanvas" style="display:none;"></canvas>
 
+<!-- ═══════════════ Preview Zoom Modal ═══════════════ -->
+<div class="zoom-overlay" id="zoomOverlay">
+  <div class="zoom-content" id="zoomContent">
+    <button class="zoom-close" id="zoomClose">&times;</button>
+    <div id="zoomRender"></div>
+    <span class="zoom-scale-info" id="zoomScaleInfo">250%</span>
+  </div>
+</div>
+
+<!-- ═══════════════ LaTeX Ref Table Modal ═══════════════ -->
+<div class="ref-overlay" id="refOverlay">
+  <div class="ref-dialog">
+    <div class="ref-header">
+      <h2>📖 LaTeX 语法速查表</h2>
+      <input type="text" class="ref-search" id="refSearchInput" placeholder="搜索命令...">
+      <button class="btn btn-secondary btn-small" style="flex:0" onclick="LaTeXRef.close()">关闭</button>
+    </div>
+    <div class="ref-tabs" id="refTabs"></div>
+    <div class="ref-body ref-grid" id="refBody"></div>
+  </div>
+</div>
+
 <!-- ═══════════════════ JavaScript Modules ═══════════════════ -->
-<!-- Order matters: data modules first, then render, then UI, then main -->
 <script src="js/font-manager.js"></script>
 <script src="js/macros.js"></script>
 <script src="js/preprocessor.js"></script>
+<script src="js/latex-ref.js"></script>
+<script src="js/syntax-highlight.js"></script>
+<script src="js/quick-edit.js"></script>
+<script src="js/preview-zoom.js"></script>
 <script src="js/render.js"></script>
 <script src="js/export.js"></script>
 <script src="js/ui.js"></script>
